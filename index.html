@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Curvens</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+  </head>
+  <body>
+    <canvas id="cnv"></canvas>
+    <script>
+
+      var canvas = document.getElementById("cnv");
+      canvas.width = innerWidth;
+      canvas.height = innerHeight;
+      var c = canvas.getContext("2d");
+      c.font = "100px Arial";
+      c.lineWidth = 3;
+      c.fillStyle = "#222222";
+      c.fillRect(0,0,innerWidth,innerHeight);
+
+      document.addEventListener("keydown", function(e)
+      {
+        if(e.keyCode == '37')
+        {
+          if(player2.effect == "rect"){player2.turn -= 90;}
+          else{player2.turnL = -defaultTurn;}
+        }
+        if(e.keyCode == '39')
+        {
+          if(player2.effect == "rect"){player2.turn += 90;}
+          else{player2.turnR = defaultTurn;}
+        }
+        if(e.keyCode == '65')
+        {
+          if(player1.effect == "rect"){player1.turn -= 90;}
+          else{player1.turnL = -defaultTurn;}
+        }
+        if(e.keyCode == '68')
+        {
+          if(player1.effect == "rect"){player1.turn += 90;}
+          else{player1.turnR = defaultTurn;}
+        }
+      });
+
+      document.addEventListener("keyup", function(e)
+      {
+        if(e.keyCode == '37'){player2.turnL = 0;}
+        if(e.keyCode == '39'){player2.turnR = 0;}
+        if(e.keyCode == '65'){player1.turnL = 0;}
+        if(e.keyCode == '68'){player1.turnR = 0;}
+      });
+
+      function getDistance(x,y,x2,y2)
+    	{
+    		return Math.sqrt(Math.abs(x-x2)*Math.abs(x-x2)+Math.abs(y-y2)*Math.abs(y-y2));
+    	}
+
+      var defaultSpeed = 2;
+      var defaultTurn = 3;
+      var wait = 100;
+      var deadTimer = 0;
+      var p1p = 0;
+      var p2p = 0;
+      var wallPass = 0;
+      var powerUpChance = 0.004;
+      var powerUpTypes = ["inv","speed","slow","wallPass","rect","clear"];
+
+      function object(color)
+      {
+        this.x = Math.random()*(innerWidth-200)+100;
+        this.y = Math.random()*(innerHeight-200)+100;
+        this.spd = defaultSpeed;
+        this.turn = Math.random()*360;
+        this.turnL = 0;
+        this.turnR = 0;
+        this.color = color;
+        this.dead = false;
+        this.effect = "";
+        this.effectTime = 0;
+        this.update = function()
+        {
+          if(!this.dead)
+          {
+            if(this.effect == "speed"){this.spd = 2.7;}
+            else if(this.effect == "slow"){this.spd = 1.4;}
+            else {this.spd = 2;}
+            this.turn += this.turnL + this.turnR
+            this.x += this.spd * Math.cos(this.turn/180*Math.PI);
+            this.y += this.spd * Math.sin(this.turn/180*Math.PI);
+            var checkX = this.x + 4 * Math.cos(this.turn/180*Math.PI);
+            var checkY = this.y + 4 * Math.sin(this.turn/180*Math.PI);
+            var p = c.getImageData(checkX, checkY, 1, 1).data;
+            if((p[0] > 35) || (p[1] > 35) || (p[2] > 35))
+            {
+              if(p[0] == p[1] && p[0] != p[2])
+              {
+                for(var i=0;i<powerUps.length;i++)
+                {
+                  if(powerUps[i].state && getDistance(this.x,this.y,powerUps[i].x,powerUps[i].y) < 18)
+                  {
+                    if(powerUps[i].type == "wallPass")
+                    {wallPass = 500;}
+                    else if(powerUps[i].type == "clear")
+                    {
+                      c.fillStyle = "#222222";
+                      c.fillRect(0,0,innerWidth,innerHeight);
+                    }
+                    else{this.effect = powerUps[i].type;}
+                    this.effectTime = 300;
+                    powerUps[i].state = false;
+                    c.beginPath();
+                    c.arc(powerUps[i].x,powerUps[i].y,13,0,Math.PI*2);
+                    c.fillStyle = "#222222";
+                    c.fill();
+                  }
+                }
+              }
+              else if(this.effect != "inv")
+              {this.dead = true;}
+            }
+            if(this.x < 0 || this.x > innerWidth){this.x = innerWidth - this.x;}
+            if(this.y < 0 || this.y > innerHeight){this.y = innerHeight - this.y;}
+            if(this.effectTime > 0){this.effectTime--;}
+            if(this.effectTime == 0){this.effect = "";}
+            this.draw();
+          }
+        }
+
+        this.draw = function()
+        {
+          c.beginPath();
+          c.arc(this.x,this.y,3,0,Math.PI*2);
+          c.fillStyle = this.color;
+          c.fill();
+          if(this.effect == "inv")
+          {
+            c.beginPath();
+            c.lineWidth = 3;
+            c.strokeStyle = "#222222";
+            c.arc(this.x,this.y,4,0,Math.PI*2);
+            c.stroke();
+            c.lineWidth = 3;
+          }
+        }
+      }
+
+      var player1 = new object("cyan");
+      var player2 = new object("red");
+
+      function init()
+      {
+        player1.draw();
+        player2.draw();
+        c.beginPath();
+        c.moveTo(player1.x,player1.y);
+        c.lineTo(player1.x+30*Math.cos(player1.turn/180*Math.PI),player1.y+30*Math.sin(player1.turn/180*Math.PI));
+        c.strokeStyle = player1.color;
+        c.stroke();
+        c.beginPath();
+        c.moveTo(player2.x,player2.y);
+        c.lineTo(player2.x+30*Math.cos(player2.turn/180*Math.PI),player2.y+30*Math.sin(player2.turn/180*Math.PI));
+        c.strokeStyle = player2.color;
+        c.stroke();
+        wallPass = 0;
+      }
+      init();
+
+      function checkDead()
+      {
+        if((player1.dead || player2.dead) && deadTimer > 1)
+        {
+          deadTimer--;
+        }
+        else if((player1.dead || player2.dead) && deadTimer == 0)
+        {
+          c.font = "100px Arial";
+          if(player1.dead){p2p++;}
+          if(player2.dead){p1p++;}
+          if(p1p == 10)
+          {
+            c.strokeStyle = "cyan";
+            c.strokeText("REKT",innerWidth/2-100,innerHeight/2-30);
+            p2p = 0;
+            p1p = 0;
+            deadTimer = 500;
+          }
+          else if(p2p == 10)
+          {
+            c.strokeStyle = "red";
+            c.strokeText("REKT",innerWidth/2-100,innerHeight/2);
+            p1p = 0;
+            p2p = 0;
+            deadTimer = 500;
+          }
+          else
+          {
+            c.strokeStyle = "cyan";
+            c.strokeText(p1p,innerWidth/2-105,innerHeight/2);
+            c.strokeStyle = "white";
+            c.strokeText("-",innerWidth/2-15,innerHeight/2);
+            c.strokeStyle = "red";
+            c.strokeText(p2p,innerWidth/2+50,innerHeight/2);
+            deadTimer = 300;
+          }
+        }
+        else if((player1.dead || player2.dead) && deadTimer == 1)
+        {
+          c.fillStyle = "#222222";
+          c.fillRect(0,0,innerWidth,innerWidth);
+          player1 = new object("cyan");
+          player2 = new object("red");
+          wait = 100;
+          init();
+          deadTimer = 0;
+        }
+      }
+
+      function powerUp()
+      {
+        this.type = powerUpTypes[Math.floor(Math.random()*powerUpTypes.length)];
+        this.x = Math.random()*(innerWidth-100)+50;
+        this.y = Math.random()*(innerHeight-100)+50;
+        this.state = true;
+      }
+      var powerUps = [];
+
+      function animate()
+      {
+        if(wait > 1)
+        {
+          wait--;
+        }
+        else if(wait == 1)
+        {
+          c.fillStyle = "#222222";
+          c.fillRect(0,0,innerWidth,innerWidth);
+          powerUps = [];
+          wait--;
+        }
+        else
+        {
+          player1.update();
+          player2.update();
+          checkDead();
+        }
+        if(Math.random() < powerUpChance && wait == 0)
+        {
+          powerUps.push(new powerUp());
+          c.beginPath();
+          c.arc(powerUps[powerUps.length-1].x,powerUps[powerUps.length-1].y,12,0,Math.PI*2);
+          c.fillStyle = "yellow";
+          c.fill();
+          c.strokeStyle = "#222222";
+          c.font = "20px Arial";
+		  var sign = "";
+		  if(powerUps[powerUps.length-1].type == "slow")sign = "v";
+		  if(powerUps[powerUps.length-1].type == "speed")sign = ">";
+		  if(powerUps[powerUps.length-1].type == "inv")sign = "o";
+		  if(powerUps[powerUps.length-1].type == "wallPass")sign = "[]";
+		  if(powerUps[powerUps.length-1].type == "rect")sign = "#";
+		  if(powerUps[powerUps.length-1].type == "clear")sign = "x";
+		  c.fillStyle = "black";
+          c.fillText(sign,powerUps[powerUps.length-1].x-5,powerUps[powerUps.length-1].y+5);
+        }
+        if(wallPass < 1){c.strokeStyle = "#777777";}
+        else{c.strokeStyle = "#222222"; wallPass--;}
+        c.beginPath();
+        c.strokeRect(2,2,innerWidth-4,innerHeight-4);
+        requestAnimationFrame(animate);
+      }
+      animate();
+
+    </script>
+  </body>
+</html>
